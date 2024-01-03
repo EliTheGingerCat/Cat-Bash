@@ -1,12 +1,14 @@
 import json, os
 from flask import Flask, request, session, render_template, redirect, url_for
 
-DATA_FOLDER_NAME = "users"
+DATA_FOLDER_PATH = "../users"
 
 NOTIFICATIONS = {
     None: "Nothing.",
-    "signup": "Signed up successfully.",
-    "username-taken": "The requested username is already in use."
+    "signup": "Success: Signed up.",
+    "login": "Success: Logged in.",
+    "logout": "Success: Logged out.",
+    "username-taken": "Error: Username taken."
 }
 
 app = Flask(__name__)
@@ -20,15 +22,15 @@ def renderWithData(page: str):
     })
 
 def getUserFilePath(username: str):
-    return os.path.join(app.root_path, DATA_FOLDER_NAME, f"{username}.txt")
+    return os.path.join(app.root_path, DATA_FOLDER_PATH, f"{username}.txt")
 
 def checkUserExists(username: str):
     return os.path.exists(getUserFilePath(username))
 
 def saveUserData(data: dict):
-    data = json.dumps(data)
+    serialized = json.dumps(data)
     with open(getUserFilePath(data["username"]), "w") as f:
-        f.write(str(data))
+        f.write(serialized)
     return None
 
 def loadUserData(username: str):
@@ -46,10 +48,10 @@ def page_index():
     return renderWithData("index.html")
     
 
-@app.route("/signup", methods=["GET"])
+@app.route("/signup", methods=["GET", "POST"])
 def page_signup():
     if session.get("username"):
-        return renderWithData("index.html")
+        return renderWithData("profile.html")
 
     if request.method == "POST":
         username = request.form["username"]
@@ -57,8 +59,8 @@ def page_signup():
 
         if not checkUserExists(username):
             saveUserData({
-                username,
-                userpass
+                "username": username,
+                "userpass": userpass
             })
             session["notification"] = "signup"
             return login(username)
@@ -70,7 +72,7 @@ def page_signup():
 @app.route("/login", methods=["GET", "POST"])
 def page_login():
     if session.get("username"):
-        return renderWithData("index.html")
+        return renderWithData("profile.html")
 
     if request.method == "POST":
         username = request.form["username"]
@@ -79,13 +81,14 @@ def page_login():
         if checkUserExists(username):
             data = loadUserData(username)
             if userpass == data["userpass"]:
+                session["notification"] = "login"
                 return login(username)
         
         session["notification"] = "invalid login"
     
     return renderWithData("login.html")
 
-@app.route("/logout")
+@app.route("/logout", methods=["GET"])
 def page_logout():
     session.clear()
     session["notification"] = "logout"
@@ -97,4 +100,4 @@ def page_profile():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=81)
+    app.run()
