@@ -1,0 +1,10 @@
+{% extends "posts/details.html" %}
+
+
+{% block title %}New Post{% endblock %}
+
+{% block post_title %}{{ request.form['title'] }}{% endblock %}
+
+{% block post_body %}{{ request.form["body"] }}{% endblock %}
+
+{% block post_delete %}{% endblock %}

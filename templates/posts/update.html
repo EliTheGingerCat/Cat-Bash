@@ -1,0 +1,15 @@
+{% extends "posts/details.html" %}
+
+
+{% block title %}Edit "{{ post["title"] }}"{% endblock %}
+
+{% block post_title %}{{request.form['title'] or post['title'] }}{% endblock %}
+
+{% block post_body %}{{ request.form["body"] or post["body"] }}{% endblock %}
+
+{% block post_delete %}
+    <hr>
+    <form method="post" action="{{ url_for('posts.delete', id=post['id']) }}">
+        <input class="danger" type="submit" value="Delete" onclick="return confirm('Are you sure?')">
+    </form>
+{% endblock %}

@@ -1,0 +1,12 @@
+<article class="post">
+    <header>
+        <div>
+            <h1><a class="silent" href="{{ url_for('posts.view', id=post['id']) }}">{{ post["title"] }}</a></h1>
+            <div class="about">by <a class="silent" href="{{ url_for('account.profile_id', id=post['author_id']) }}">{{ post["name"] }}</a> on {{ post["created"].strftime("%Y-%m-%d") }}</div>
+        </div>
+        {% if g.user["id"] == post["author_id"] %}
+            <a class="action" href="{{ url_for('posts.update', id=post['id']) }}">Edit</a>
+        {% endif %}
+    </header>
+    <p class="body">{{ post["body"] }}</p>
+</article>
