@@ -10,12 +10,12 @@ local Application = {
 Application.__index = Application
 setmetatable(Application, Moonprint)
 
-export type Application = typeof(setmetatable({} :: {
+export type Application = Moonprint.Moonprint & typeof(setmetatable({} :: {
     _handle: net.ServeHandle?
 }, Application))
 
 function Application.new(): (Application)
-    local self = Moonprint.new()
+    local self = Moonprint.new() :: any
     setmetatable(self, Application)
     return self
 end
