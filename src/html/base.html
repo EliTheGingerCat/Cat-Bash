@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>ETGC - {% block title %}</title>
+        <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+        <link rel="stylesheet" href="/static/css/main.css">
+        <script src="/static/js/main.js"></script>
+    </head>
+    <body>
+        <header>
+            <a href="/">ETGC</a>
+            <nav>
+                <a href="/cat-bash">Cat Bash</a>
+                <a href="/bridge-duel">Bridge Duel</a>
+                <a href="/games">Games</a>
+                <a href="/credits">Credits</a>
+            </nav>
+            <h1>{% block title %}</h1>
+        </header>
+        {% block content %}
+    </body>
+</html>

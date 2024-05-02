@@ -1,0 +1,7 @@
+* {
+    --accent-colour: #ff8000;
+}
+
+p {
+    color: var(--accent-colour);
+}
