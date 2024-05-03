@@ -1,4 +1,5 @@
 --!strict
+--!nolint LocalShadow
 
 local fs = require("@lune/fs")
 
@@ -41,13 +42,13 @@ local function stringInject(s: string, start: number, stop: number, replacement:
 end
 
 local function render(path: string, arguments: {[string]: string}?, data: blockData?): (string)
-    local arguments = arguments or {}
+    local arguments = arguments or {} :: {[string]: string}
     local data = data or {} :: blockData
     local content = fs.readFile(path)
     -- replace variables
     content = string.gsub(content, "{{%s*(%a+)%s*}}", function(_, variable)
         return arguments[variable] or error(`Variable {variable} not found in {arguments}.`)
-    end)
+    end :: any)
     -- execute keywords
     local init = 1
     local blockStack: blockStack = {}
