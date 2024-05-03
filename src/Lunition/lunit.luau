@@ -8,7 +8,7 @@ local Codes = require("codes")
 local Render = require("render")
 
 local Lunit = {
-    className = "Moonprint"
+    className = "Lunit"
 }
 Lunit.__index = Lunit
 
@@ -24,7 +24,8 @@ export type errorLuauHandler = (message: string) -> (net.ServeResponse)
 export type errorHttpHandler = (code: number, name: string, description: string) -> (net.ServeResponse)
 export type responseWrapped = {
     response: net.ServeResponse,
-    errorHandled: boolean,
+    errorHandled: boolean?,
+    found: boolean?
 }
 
 Lunit.defaultHandlers = {}
@@ -49,14 +50,14 @@ end) :: errorHttpHandler
 
 
 
-local function routeStatic(pathRouter: string, pathRequest: string): (net.ServeResponse)
-    if fs.isDir(pathRouter) then
+local function routeStatic(pathStatic: string, pathRequest: string): (net.ServeResponse)
+    if fs.isDir(pathStatic) then
         -- url path should lead to a file
-        pathRouter ..= string.sub(pathRequest, assert(string.find(pathRequest, pathRouter)) + #pathRouter)
+        pathStatic ..= string.sub(pathRequest, assert(string.find(pathRequest, pathStatic)) + #pathStatic)
     end
 
     -- now it better not be a directory
-    if fs.isDir(pathRouter) then
+    if fs.isDir(pathStatic) then
         return {
             status = 400,
             body = "Please specify a file."
@@ -64,12 +65,10 @@ local function routeStatic(pathRouter: string, pathRequest: string): (net.ServeR
     end
 
     -- reading files can always go wrong
-    print(pathRouter)
-    local success, results = pcall(fs.readFile, pathRouter)
+    local success, results = pcall(fs.readFile, pathStatic)
     if not success then
         -- lazy error message but it should work
-        local errorFull = tostring(results)
-        local errorMessage = string.sub(errorFull, 1, (string.find(errorFull, "\n")))
+        local errorMessage = string.match(tostring(results), "(.-)\n")
         return {
             status = 400,
             body = `fs error: {errorMessage}`
@@ -77,8 +76,8 @@ local function routeStatic(pathRouter: string, pathRequest: string): (net.ServeR
     end
 
     -- automatically render HTML for easier static pages
-    if string.find(pathRouter, ".html$") then
-        results = Render(pathRouter)
+    if string.find(pathStatic, ".html$") then
+        results = Render(pathStatic)
     end
 
     -- success!
@@ -105,6 +104,29 @@ local function routeLunit(lunit: Lunit, request: net.ServeRequest, depth: number
     end
 end
 
+local function handleRouter(router: router, request: net.ServeRequest, pathRouter: string, pathRequest: string, depth: number): (responseWrapped)
+    local wrapped
+    if type(router) == "string" then
+        -- file or directory
+        wrapped = {
+            response = routeStatic(router, pathRequest)
+        }
+    elseif type(router) == "function" then
+        -- custom function
+        wrapped = {
+            response = router(request)
+        }
+    elseif type(router) == "table" then
+        -- lunit
+        wrapped = routeLunit(router, request, depth)
+    else
+        error("Invalid router!")
+    end
+    -- ensure that the found attribute exists
+    wrapped.found = wrapped.found or not wrapped.response.status or wrapped.response.status < 400
+    return wrapped
+end
+
 
 
 function Lunit.new(): (Lunit)
@@ -118,59 +140,62 @@ function Lunit.route(self: Lunit, pathRouter: string, router: router): ()
 end
 
 function Lunit.run(self: Lunit, request: net.ServeRequest, depth: number?): (responseWrapped)
-    print(self, depth)
-    -- setup for response wrapper
-    local response: net.ServeResponse
+    local wrapped = {} :: responseWrapped
     local depth = depth or 1
     local pathRequest = request.path
-    pathRequest = string.gsub(request.path, "^/$", "") -- remove lonely slashes
     local pathPiecesUrl = string.split(pathRequest, "/")
-    table.remove(pathPiecesUrl, 1)
     
-    for pathRouter, router in self._routes do
-        pathRouter = string.gsub(pathRouter, "^/$", "")
-        local pathPiecesRoute = string.split(pathRouter, "/")
-        table.remove(pathPiecesRoute, 1)
-
-        if pathPiecesUrl[depth] == pathPiecesRoute[1] then
-            -- see how far it goes
-            local routeDepth = 1
-            repeat
-                depth += 1
-                routeDepth += 1
-            until pathPiecesUrl[depth] ~= pathPiecesRoute[routeDepth] or depth > #pathPiecesUrl
-            depth -= 1 -- correct depth since it went over
-
-            local success = true
-            if type(router) == "function" or type(router) == "string" and not fs.isDir(router) then
-                -- url needs to be exact for functions and files
-                success = depth >= #pathPiecesUrl
+    if pathRequest ~= "/" then
+        for pathRouter, router in self._routes do
+            if pathRouter == "/" then
+                continue
             end
-
-            if success then
-                if type(router) == "string" then
-                    -- file or directory
-                    response = routeStatic(pathRouter, pathRequest)
-                    break
-                elseif type(router) == "function" then
-                    -- custom function
-                    response = router(request)
-                    break
-                else
-                    -- lunit
-                    local wrapped = routeLunit(router, request, depth)
-                    if wrapped.errorHandled then
-                        return wrapped
-                    else
-                        response = wrapped.response
-                        break
-                    end
+            local pathPiecesRoute = string.split(pathRouter, "/")
+            
+            if pathPiecesUrl[depth] == pathPiecesRoute[1] then
+                -- see how far it goes
+                local routeDepth = 1
+                repeat
+                    depth += 1
+                    routeDepth += 1
+                until pathPiecesUrl[depth] ~= pathPiecesRoute[routeDepth] or depth > #pathPiecesUrl
+                depth -= 1 -- correct depth since it went over
+    
+                local success = true
+                if type(router) == "function" or type(router) == "string" and not fs.isDir(router) then
+                    -- url needs to be exact for functions and files
+                    success = depth >= #pathPiecesUrl
                 end
+                if not success then
+                    continue
+                end
+                
+                local success, results = pcall(handleRouter, router, request, pathRouter, pathRequest, depth)
+                if not success then
+                    continue
+                end
+
+                wrapped = results
+                break
+            end
+        end 
+    end
+    
+    -- try `/` as a last resort
+    if not wrapped.response then
+        local lastResort = self._routes["/"]
+        if lastResort then
+            local success, results = pcall(handleRouter, lastResort, request, "/", pathRequest, depth)
+            -- checking `status < 400` might be troublesome
+            if success and results.found then
+                wrapped = results
             end
         end
     end
 
     -- if no response then this is a dead path
+    local response = wrapped.response
+    local found = response ~= nil
     response = response or {
         status = 404,
         body = `Unknown path {request.path}.`
@@ -186,7 +211,7 @@ function Lunit.run(self: Lunit, request: net.ServeRequest, depth: number?): (res
     else
         return {
             response = response,
-            errorHandled = false
+            found = found
         }
     end 
 end
