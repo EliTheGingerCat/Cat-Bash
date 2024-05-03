@@ -55,19 +55,22 @@ function Lunit.new(): (Lunit)
     }, Lunit)
 end
 
-function Lunit.route(self: Lunit, urlPath: string, router: router): ()
-    self._routes[urlPath] = router
+function Lunit.route(self: Lunit, pathRouter: string, router: router): ()
+    self._routes[pathRouter] = router
 end
 
 function Lunit.run(self: Lunit, request: net.ServeRequest, depth: number?): (responseWrapped)
     -- setup for response wrapper
     local response: net.ServeResponse
     local depth = depth or 1
-    local pathPiecesUrl = string.split(request.path, "/")
+    local pathRequest = request.path
+    pathRequest = string.gsub(request.path, "^/$", "") -- remove lonely slashes
+    local pathPiecesUrl = string.split(pathRequest, "/")
     table.remove(pathPiecesUrl, 1)
     
-    for urlPath, router in self._routes do
-        local pathPiecesRoute = string.split("/" .. urlPath, "/")
+    for pathRouter, router in self._routes do
+        pathRouter = string.gsub(pathRouter, "^/$", "")
+        local pathPiecesRoute = string.split(pathRouter, "/")
         table.remove(pathPiecesRoute, 1)
 
         if pathPiecesUrl[depth] == pathPiecesRoute[1] then
@@ -82,7 +85,7 @@ function Lunit.run(self: Lunit, request: net.ServeRequest, depth: number?): (res
             local success = true
             if type(router) == "function" or type(router) == "string" and not fs.isDir(router) then
                 -- url needs to be exact for functions and files
-                success = depth == #pathPiecesUrl
+                success = depth >= #pathPiecesUrl
             end
 
             if success then
@@ -90,7 +93,7 @@ function Lunit.run(self: Lunit, request: net.ServeRequest, depth: number?): (res
                     -- file or directory
                     if fs.isDir(router) then
                         -- url path should lead to a file
-                        router ..= string.sub(request.path, assert(string.find(request.path, urlPath)) + #urlPath)
+                        router ..= string.sub(pathRequest, assert(string.find(pathRequest, pathRouter)) + #pathRouter)
                     end
 
                     -- now it better not be a directory

@@ -1,5 +1,7 @@
 --!strict
 
+-- Type checking is goofy here, but it allows for best user experience when using Lunition.
+
 local net = require("@lune/net")
 
 local Lunit = require("lunit")
@@ -8,7 +10,7 @@ local Application = {
     className = "Application"
 }
 Application.__index = Application
-setmetatable(Application, Lunit)
+do setmetatable(Application, Lunit) end -- the `do` block matters for some reason 😭
 
 export type Application = Lunit.Lunit & typeof(setmetatable({} :: {
     _handle: net.ServeHandle?
