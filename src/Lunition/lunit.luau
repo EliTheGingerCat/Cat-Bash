@@ -16,33 +16,44 @@ export type Lunit = typeof(setmetatable({} :: {
     _routes: {
         [string]: router
     },
-    errorHandler: errorHandler?
+    errorHandlerLuau: errorLuauHandler?,
+    errorHandlerHttp: errorHttpHandler?
 }, Lunit))
 export type router = string | ((request: net.ServeRequest) -> (net.ServeResponse)) | Lunit
-export type errorHandler = (code: number, name: string, description: string) -> (net.ServeResponse)
+export type errorLuauHandler = (message: string) -> (net.ServeResponse)
+export type errorHttpHandler = (code: number, name: string, description: string) -> (net.ServeResponse)
 export type responseWrapped = {
     response: net.ServeResponse,
     errorHandled: boolean,
 }
 
-function Lunit.new(): (Lunit)
-    return setmetatable({
-        _routes = {}
-    }, Lunit)
-end
-
-Lunit.defaultErrorHandler = (function(code, name, description)
+Lunit.defaultHandlers = {}
+Lunit.defaultHandlers.luau = (function(message)
+    return {
+        status = 500,
+        body = Render("html/error/luau.html", {
+            message = message
+        })
+    }
+end) :: errorLuauHandler
+Lunit.defaultHandlers.http = (function(code, name, description)
     return {
         status = code,
-        body = Render("html/error.html", {
+        body = Render("html/error/http.html", {
             code = tostring(code),
             name = name,
             description = description
         })
     }
-end) :: errorHandler
+end) :: errorHttpHandler
 
 
+
+function Lunit.new(): (Lunit)
+    return setmetatable({
+        _routes = {},
+    }, Lunit)
+end
 
 function Lunit.route(self: Lunit, urlPath: string, router: router): ()
     self._routes[urlPath] = router
@@ -118,11 +129,24 @@ function Lunit.run(self: Lunit, request: net.ServeRequest, depth: number?): (res
                     response = router(request)
                 else
                     -- lunit
-                    local wrapped = router:run(request, depth + 1)
-                    response = wrapped.response
-                    -- return if it is already good
-                    if wrapped.errorHandled then
-                        return wrapped
+                    local success, results = pcall(router.run, router, request, depth + 1)
+                    if success then
+                        response = results.response
+                        -- return if it is already good
+                        if results.errorHandled then
+                            return results
+                        end
+                    else
+                        -- Luau error
+                        if router.errorHandlerLuau then
+                            return {
+                                response = router.errorHandlerLuau(results :: any), -- TC is Wrong!,
+                                errorHandled = true
+                            }
+                        else
+                            -- bubble up the error
+                            error(results)
+                        end
                     end
                 end
             end
@@ -136,10 +160,10 @@ function Lunit.run(self: Lunit, request: net.ServeRequest, depth: number?): (res
     }
 
     -- handle error if necessary
-    if response.status and response.status >= 400 and self.errorHandler then
+    if response.status and response.status >= 400 and self.errorHandlerHttp then
         -- this will bubble up since the error was handled
         return {
-            response = self.errorHandler(response.status, Codes[response.status], response.body or ""),
+            response = self.errorHandlerHttp(response.status, Codes[response.status], response.body or ""),
             errorHandled = true
         }
     else

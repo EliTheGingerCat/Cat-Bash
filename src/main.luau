@@ -1,13 +1,14 @@
 --!strict
 
-fs = require("@lune/fs")
+local fs = require("@lune/fs")
 
 local Lunition = require("Lunition")
 local App = Lunition.Application
 local Lunit = Lunition.Lunit
 
 local website = App.new()
-website.errorHandler = Lunit.defaultErrorHandler
+website.errorHandlerLuau = Lunit.defaultHandlers.luau
+website.errorHandlerHttp = Lunit.defaultHandlers.http
 
 website:route("", "html/index.html")
 website:route("static", "static")

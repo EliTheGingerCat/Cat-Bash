@@ -26,7 +26,22 @@ function Application.start(self: Application, port: number): ()
     end
 
     self._handle = net.serve(port, function(request)
-        return self:run(request).response
+        local success, results = pcall(self.run, self, request)
+        if success then
+            return results.response
+        else
+            -- a little bit repetitive
+            -- but I think this copy-and-paste is acceptable
+            if self.errorHandlerLuau then
+                return self.errorHandlerLuau(results :: any)
+            else
+                -- error can no longer be bubbled up
+                return {
+                    status = 500,
+                    body = `Luau error: {results}`
+                }
+            end
+        end
     end)
 end
 
