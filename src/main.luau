@@ -1,26 +1,31 @@
 --!strict
 
-local App = require("application")
-local Moonprint = require("moonprint")
+local fs = require("@lune/fs")
+
+local Lunition = require("Lunition")
+local App = Lunition.Application
+local Lunit = Lunition.Lunit
 
 local website = App.new()
+website.errorHandlerLuau = Lunit.defaultHandlers.luau
+website.errorHandlerHttp = Lunit.defaultHandlers.http
 
-local blog = Moonprint.new()
-blog:route("hello", "html/blog/hello.html")
+website:route("/static", "static")
 
-local secretBlog = Moonprint.new()
-secretBlog:route("how", "html/blog/secret/how.html")
+-- This is the old way of displaying favicons - serving it at `/favicon.ico`. Maybe we should return to using
+-- <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+-- in base.html, though this seems to have better compatibility.
+website:route("/favicon.ico", "static/images/favicon.ico")
 
-website:route("", "html/index.html")
-website:route("cat", "html/cat.html")
-website:route("kid", "html/kid.html")
-website:route("static", "static")
+website:route("/", require("site-base"))
 
-blog:route("secret", secretBlog)
-website:route("blog", blog)
-
-website.errorHandler = Moonprint.defaultErrorHandler
+for _, path in fs.readDir("site") do
+	-- Catches everything before the extension and adds it as the urlPath for that lunit. Maybe we should switch to manually routing each lunit so TC is happy.
+	website:route("/" .. assert(string.match(path, "(.+).luau")), require(`site/{path}`))
+end
 
 website:start(8080)
 
 print("Running on port 8080.")
+
+return website

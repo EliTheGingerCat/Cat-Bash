@@ -1,7 +1,7 @@
 * {
-    --accent-colour: #ff8000;
+	--accent-colour: #ff8000;
 }
 
 p {
-    color: var(--accent-colour);
+	color: var(--accent-colour);
 }
