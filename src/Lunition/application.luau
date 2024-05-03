@@ -2,20 +2,20 @@
 
 local net = require("@lune/net")
 
-local Moonprint = require("moonprint")
+local Lunit = require("lunit")
 
 local Application = {
     className = "Application"
 }
 Application.__index = Application
-setmetatable(Application, Moonprint)
+setmetatable(Application, Lunit)
 
-export type Application = Moonprint.Moonprint & typeof(setmetatable({} :: {
+export type Application = Lunit.Lunit & typeof(setmetatable({} :: {
     _handle: net.ServeHandle?
 }, Application))
 
 function Application.new(): (Application)
-    local self = Moonprint.new() :: any
+    local self = Lunit.new() :: any
     setmetatable(self, Application)
     return self
 end
@@ -26,11 +26,7 @@ function Application.start(self: Application, port: number): ()
     end
 
     self._handle = net.serve(port, function(request)
-        return self:run(request)
-        --[[local Codes = require("codes")
-            if response.status and response.status >= 400 and router.errorHandler then
-            return router.errorHandler(response.status, Codes[response.status], response.body or "")
-        end]]
+        return self:run(request).response
     end)
 end
 

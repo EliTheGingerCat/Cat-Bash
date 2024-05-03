@@ -3,37 +3,11 @@
 
 local fs = require("@lune/fs")
 
---[[
-
-start with page
-depth 3
-it extends
-parse blocks
-get ancestor
-depth 2
-it extends
-parse blocks
-fill with previous content
-get ancestor
-depth 1
-it does not extend
-parse blocks
-fill with previous content
-no ancestor
-return string
-depth 2
-return string
-depth 3
-return string
-
-]]
-
 export type block = {
     name: string,
     start: number,
     stop: number
 }
-export type blockDict = {[string]: block}
 export type blockData = {[string]: string}
 export type blockStack = {block}
 
@@ -46,9 +20,9 @@ local function render(path: string, arguments: {[string]: string}?, data: blockD
     local data = data or {} :: blockData
     local content = fs.readFile(path)
     -- replace variables
-    content = string.gsub(content, "{{%s*(%a+)%s*}}", function(_, variable)
+    content = string.gsub(content, "{{%s*(%a+)%s*}}", function(variable)
         return arguments[variable] or error(`Variable {variable} not found in {arguments}.`)
-    end :: any)
+    end)
     -- execute keywords
     local init = 1
     local blockStack: blockStack = {}
@@ -92,9 +66,7 @@ local function render(path: string, arguments: {[string]: string}?, data: blockD
         end
     end
     if template then
-        local result = render(template, arguments, blockData)
-        print(result)
-        return result
+        return render(template, arguments, blockData)
     else
         return content
     end

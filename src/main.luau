@@ -1,25 +1,20 @@
 --!strict
 
-local App = require("application")
-local Moonprint = require("moonprint")
+fs = require("@lune/fs")
+
+local Lunition = require("Lunition")
+local App = Lunition.Application
+local Lunit = Lunition.Lunit
 
 local website = App.new()
-
-local blog = Moonprint.new()
-blog:route("hello", "html/blog/hello.html")
-
-local secretBlog = Moonprint.new()
-secretBlog:route("how", "html/blog/secret/how.html")
+website.errorHandler = Lunit.defaultErrorHandler
 
 website:route("", "html/index.html")
-website:route("cat", "html/cat.html")
-website:route("kid", "html/kid.html")
 website:route("static", "static")
 
-blog:route("secret", secretBlog)
-website:route("blog", blog)
-
-website.errorHandler = Moonprint.defaultErrorHandler
+for _, path in fs.readDir("site") do
+	website:route(assert(string.match(path, "^[%a-]+")), require(`site/{path}`))
+end
 
 website:start(8080)
 
