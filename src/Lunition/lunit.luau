@@ -7,6 +7,12 @@ local net = require("@lune/net")
 local Codes = require("codes")
 local Render = require("render")
 
+--[=[
+	@class Lunit
+	A Lunit is an object from which Application is derived,
+	which handles routing web URLs to files, directories,
+    functions, and Lunit templates.
+]=]
 local Lunit = {
     className = "Lunit"
 }
@@ -129,16 +135,38 @@ end
 
 
 
+--[=[
+	@return Lunit
+	Constructs a Lunit object.
+
+	```lua
+	local lunit = Lunit.new()
+	```
+]=]
 function Lunit.new(): (Lunit)
     return setmetatable({
         _routes = {},
     }, Lunit)
 end
 
+
+--[=[
+    @within Lunit
+    @param pathRouter -- The web URL.
+    @param router -- The router object. Can be a string, function, or another Lunit.
+    Routes a web URL to a router.
+]=]
 function Lunit.route(self: Lunit, pathRouter: string, router: router): ()
     self._routes[pathRouter] = router
 end
 
+--[=[
+    @tag Internal
+    @within Lunit
+    @param request -- The serve request provided by the `net.serve` callback function.
+    @param depth -- The depth of the URL. A depth of 2 for `/eli/progress` would be `progress`.
+    @param isFromLastResort -- Whether it should look for any possible path.
+]=]
 function Lunit.run(self: Lunit, request: net.ServeRequest, depth: number?, isFromLastResort: boolean?): (responseWrapped)
     local wrapped = {} :: responseWrapped
     local depth = depth or 1
