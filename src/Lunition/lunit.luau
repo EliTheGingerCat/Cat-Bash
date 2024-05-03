@@ -86,8 +86,8 @@ local function routeStatic(pathStatic: string, pathRequest: string): (net.ServeR
     }
 end
 
-local function routeLunit(lunit: Lunit, request: net.ServeRequest, depth: number): (responseWrapped)
-    local success, results = pcall(lunit.run, lunit, request, depth + 1)
+local function routeLunit(lunit: Lunit, request: net.ServeRequest, depth: number, isFromLastResort): (responseWrapped)
+    local success, results = pcall(lunit.run, lunit, request, depth, isFromLastResort)
     if success then
         return results
     else
@@ -104,7 +104,7 @@ local function routeLunit(lunit: Lunit, request: net.ServeRequest, depth: number
     end
 end
 
-local function handleRouter(router: router, request: net.ServeRequest, pathRouter: string, pathRequest: string, depth: number): (responseWrapped)
+local function handleRouter(router: router, request: net.ServeRequest, pathRouter: string, pathRequest: string, depth: number, isFromLastResort: boolean?): (responseWrapped)
     local wrapped
     if type(router) == "string" then
         -- file or directory
@@ -118,7 +118,7 @@ local function handleRouter(router: router, request: net.ServeRequest, pathRoute
         }
     elseif type(router) == "table" then
         -- lunit
-        wrapped = routeLunit(router, request, depth)
+        wrapped = routeLunit(router, request, depth, isFromLastResort)
     else
         error("Invalid router!")
     end
@@ -139,38 +139,49 @@ function Lunit.route(self: Lunit, pathRouter: string, router: router): ()
     self._routes[pathRouter] = router
 end
 
-function Lunit.run(self: Lunit, request: net.ServeRequest, depth: number?): (responseWrapped)
+function Lunit.run(self: Lunit, request: net.ServeRequest, depth: number?, isFromLastResort: boolean?): (responseWrapped)
     local wrapped = {} :: responseWrapped
     local depth = depth or 1
     local pathRequest = request.path
     local pathPiecesUrl = string.split(pathRequest, "/")
-    
+    table.remove(pathPiecesUrl, 1)
+
     if pathRequest ~= "/" then
         for pathRouter, router in self._routes do
             if pathRouter == "/" then
                 continue
             end
             local pathPiecesRoute = string.split(pathRouter, "/")
+            table.remove(pathPiecesRoute, 1)
             
             if pathPiecesUrl[depth] == pathPiecesRoute[1] then
                 -- see how far it goes
-                local routeDepth = 1
-                repeat
-                    depth += 1
-                    routeDepth += 1
-                until pathPiecesUrl[depth] ~= pathPiecesRoute[routeDepth] or depth > #pathPiecesUrl
-                depth -= 1 -- correct depth since it went over
+                local depthUrl = depth
+                local depthRoute = 1
+                while true do
+                    if depthUrl >= #pathPiecesUrl then
+                        break
+                    end
+                    depthUrl += 1
+                    depthRoute += 1
+                    if pathPiecesUrl[depthUrl] ~= pathPiecesRoute[depthRoute] then
+                        depthUrl -= 1
+                        break
+                    end
+                end
     
                 local success = true
                 if type(router) == "function" or type(router) == "string" and not fs.isDir(router) then
                     -- url needs to be exact for functions and files
-                    success = depth >= #pathPiecesUrl
+                    success = depthUrl >= #pathPiecesUrl
                 end
                 if not success then
                     continue
                 end
                 
-                local success, results = pcall(handleRouter, router, request, pathRouter, pathRequest, depth)
+                -- depth can be set
+                depth = depthUrl
+                local success, results = pcall(handleRouter, router, request, pathRouter, pathRequest, depth, isFromLastResort)
                 if not success then
                     continue
                 end
@@ -178,15 +189,20 @@ function Lunit.run(self: Lunit, request: net.ServeRequest, depth: number?): (res
                 wrapped = results
                 break
             end
-        end 
+        end
     end
     
     -- try `/` as a last resort
     if not wrapped.response then
         local lastResort = self._routes["/"]
-        if lastResort then
-            local success, results = pcall(handleRouter, lastResort, request, "/", pathRequest, depth)
-            -- checking `status < 400` might be troublesome
+        local isExists = lastResort ~= nil
+        local isHandler = type(lastResort) == "function"
+        local isFile = type(lastResort) == "string" and not fs.isDir(lastResort)
+        local isEnd = pathPiecesUrl[depth + 1] == nil
+        local isExactEnough = not isHandler and not isFile or isEnd
+        local isAcceptable = not isFromLastResort or pathPiecesUrl[depth] == "" or not isHandler and not isFile
+        if isExists and isExactEnough and isAcceptable then
+            local success, results = pcall(handleRouter, lastResort, request, "/", pathRequest, depth, true)
             if success and results.found then
                 wrapped = results
             end
