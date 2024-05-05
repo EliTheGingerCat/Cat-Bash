@@ -33,7 +33,6 @@ for path, heading in html do
 		url = URL_ROOT .. path,
 		method = "GET"
 	})
-	print(response)
 	assert(response.statusCode == 200, "Status code must be 200.")
 	assert(string.find(response.body, `<h1>{heading}</h1>`), "Unexpected heading.")
 end
@@ -52,7 +51,7 @@ local static = {
 for category, items in static do
 	for _, name in items do
 		local response = net.request({
-			url = URL_ROOT .. `static/{category}/{name}`,
+			url = URL_ROOT .. `/static/{category}/{name}`,
 			method = "GET"
 		})
 		assert(response.statusCode == 200, "Status code must be 200.")
