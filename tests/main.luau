@@ -1,3 +1,5 @@
+--!nolint LocalShadow
+
 local net = require("@lune/net")
 
 local URL_ROOT = "http://localhost:8080"
