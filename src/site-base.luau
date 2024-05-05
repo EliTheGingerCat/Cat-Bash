@@ -1,5 +1,3 @@
---!strict
-
 local Lunition = require("Lunition")
 local Lunit = Lunition.Lunit
 

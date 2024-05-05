@@ -1,4 +1,3 @@
---!strict
 --!nolint LocalShadow
 
 local fs = require("@lune/fs")

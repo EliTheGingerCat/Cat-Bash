@@ -1,5 +1,3 @@
---!strict
-
 -- Type checking is goofy here, but it allows for best user experience when using Lunition.
 
 local net = require("@lune/net")
