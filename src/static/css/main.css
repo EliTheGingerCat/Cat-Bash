@@ -1,7 +1,42 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap");
+
 * {
 	--accent-colour: #ff8000;
+	font-family: "Inter", sans-serif;
+	margin: 0px;
 }
 
 p {
 	color: var(--accent-colour);
+}
+
+.page-header {
+	width: 100%;
+	height: inherit;
+	background: #d4862c;
+	padding: 15px 15px;
+	box-sizing: border-box;
+}
+
+.page-header a {
+	color: white;
+}
+.page-header a {
+	text-decoration: none;
+}
+
+.page-header a:hover {
+	text-decoration: underline;
+}
+
+.page-header > a {
+	font-size: 20px;
+}
+
+.navbar {
+	float: right;
+}
+
+.navbar a {
+	padding: 0px 10px;
 }

@@ -7,16 +7,16 @@
         <meta charset="UTF-8" />
     </head>
     <body>
-        <header>
+        <header class="page-header">
             <a href="/">ETGC</a>
-            <nav>
+            <nav class="navbar">
                 <a href="/cat-bash">Cat Bash</a>
                 <a href="/bridge-duel">Bridge Duel</a>
                 <a href="/games">Games</a>
                 <a href="/credits">Credits</a>
             </nav>
-            <h1>{% block title %}</h1>
         </header>
+        <h1>{% block title %}</h1>
         {% block content %}
     </body>
 </html>
