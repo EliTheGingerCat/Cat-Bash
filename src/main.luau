@@ -1,6 +1,7 @@
 --!strict
 
 local fs = require("@lune/fs")
+local process = require("@lune/process")
 
 local Lunition = require("Lunition")
 local App = Lunition.Application
@@ -26,6 +27,16 @@ end
 
 website:start(8080)
 
-print("Running on port 8080.")
-
-return website
+if table.find(process.args, "t") then
+	-- testing
+	local success, message = pcall(require, "../tests/main")
+	website:stop()
+	if success then
+		print("All tests successful! 😸")
+	else
+		print(`Error! 😿\n{message}`)
+	end
+	
+else
+	print("Running on port 8080.")
+end
