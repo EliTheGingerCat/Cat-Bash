@@ -1,0 +1,24 @@
+{% extends html/base.html %}
+
+{% block title %}API documentation{% endblock %}
+
+{% block content %}
+	<h2>/api/luau-bytecode</h1>
+	<h3>Request</h3>
+	<p>
+		Method: POST<br/>
+		Body: {<br/>
+	</p>
+	<p class="padded">luau: [string]</p>
+	<p>
+		}
+	</p>
+	<h3>Response</h3>
+	<p>
+		Body: {<br/>
+	</p>
+	<p class="padded">bytecode: [string]</p>
+	<p>
+		}
+	</p>
+{% endblock %}

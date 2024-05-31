@@ -10,6 +10,10 @@ p {
 	color: var(--accent-colour);
 }
 
+.padded {
+	padding-left: 14px;
+}
+
 .page-header {
 	width: 100%;
 	height: inherit;
